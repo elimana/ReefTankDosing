@@ -8,10 +8,10 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-[Arduino Time library](https://github.com/PaulStoffregen/Time)
-[Adafruit GFX library](https://github.com/adafruit/Adafruit-GFX-Library)
-[Adafruit PCD8544 Nokia 5110 LCD library](https://github.com/adafruit/Adafruit-PCD8544-Nokia-5110-LCD-library)
-[ArduinoJson](https://github.com/bblanchon/ArduinoJson)
+* [Arduino Time library](https://github.com/PaulStoffregen/Time)
+* [Adafruit GFX library](https://github.com/adafruit/Adafruit-GFX-Library)
+* [Adafruit PCD8544 Nokia 5110 LCD library](https://github.com/adafruit/Adafruit-PCD8544-Nokia-5110-LCD-library)
+* [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
 
 ```
 Give examples
