@@ -5,42 +5,28 @@
 #include <TimeLib.h>
 #include <ArduinoJson.h>
 
-//char* PinNames[54];
-String PinNames[54];
 Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 3, 4);
 
-//{"type":"pinconfig","doseTime":16000,"Alkalinity":24,"Calcium":28,"Magnesium":26,"Strotium":22}
-//{"type":"dosetable","table":[[],[],[],[],[],[],["Alkalinity"],["Alkalinity","Magnesium"],["Alkalinity"],["Alkalinity"],["Alkalinity"],["Alkalinity"],["Alkalinity"],["Alkalinity"],["Alkalinity"],["Alkalinity"],[],[],["Calcium"],["Calcium"],["Strotium"],["Strotium"],[],[]]}
+//{"type":"pinconfig","doseTime":16000,"pins":{"ALKALINITY":24,"CALCIUM":28,"MAGNESIUM":26,"STROTIUM":22}}
+//{"type":"dosetable","table":[[],[],[],[],[],[],["ALKALINITY"],["ALKALINITY","MAGNESIUM"],["ALKALINITY"],["ALKALINITY"],["ALKALINITY"],["ALKALINITY"],["ALKALINITY"],["ALKALINITY"],["ALKALINITY"],["ALKALINITY"],[],[],["CALCIUM"],["CALCIUM"],["STROTIUM"],["STROTIUM"],[],[]]}
 //{"type":"timesync","time":1529330006}
 
-String pinjson = "{\"type\":\"pinconfig\",\"doseTime\":16000,\"Alkalinity\":[24],\"Calcium\":28,\"Magnesium\":26,\"Strotium\":22}";
-String dosejson = "{\"type\":\"dosetable\",\"table\":[[],[],[],[],[],[],[\"Alkalinity\"],[\"Alkalinity\",\"Magnesium\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[],[],[\"Calcium\"],[\"Calcium\"],[\"Strotium\"],[\"Strotium\"],[],[]]}";
+String pinjson = "{\"type\":\"pinconfig\",\"doseTime\":16000,\"ALKALINITY\":[24],\"CALCIUM\":28,\"MAGNESIUM\":26,\"STROTIUM\":22}";
+String dosejson = "{\"type\":\"dosetable\",\"table\":[[],[],[],[],[],[],[\"ALKALINITY\"],[\"ALKALINITY\",\"MAGNESIUM\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[],[],[\"CALCIUM\"],[\"CALCIUM\"],[\"STROTIUM\"],[\"STROTIUM\"],[],[]]}";
 
-//{\"type\":\"pinconfig\",\"doseTime\":16000,\"Alkalinity\":24,\"Calcium\":28,\"Magnesium\":26,\"Strotium\":22}
-//{\"type\":\"dosetable\",\"table\":[[],[],[],[],[],[],[\"Alkalinity\"],[\"Alkalinity\",\"Magnesium\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[],[],[\"Calcium\"],[\"Calcium\"],[\"Strotium\"],[\"Strotium\"],[],[]]}
+//{\"type\":\"pinconfig\",\"doseTime\":16000,\"pins\":{\"ALKALINITY\":24,\"CALCIUM\":28,\"MAGNESIUM\":26,\"STROTIUM\":22}}
+//{\"type\":\"dosetable\",\"table\":[[],[],[],[],[],[],[\"ALKALINITY\"],[\"ALKALINITY\",\"MAGNESIUM\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[\"ALKALINITY\"],[],[],[\"CALCIUM\"],[\"CALCIUM\"],[\"STROTIUM\"],[\"STROTIUM\"],[],[]]}
 //{\"type\":\"timesync\",\"time\":1529330006}
 
 StaticJsonDocument<1000> pinDoc;
 StaticJsonDocument<2000> doseDoc;
-
-//Serial.println(pinconfig["type"].as<const char*>());
-//JsonObject& pinconfig = doc.as<JsonObject>();
-//deserializeJson(doc, "{\"type\":\"dosetable\",\"table\":[[],[],[],[],[],[],[\"Alkalinity\"],[\"Alkalinity\",\"Magnesium\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[\"Alkalinity\"],[],[],[\"Calcium\"],[\"Calcium\"],[\"Strotium\"],[\"Strotium\"],[],[]]}");
-//JsonObject& dosetable = doc.as<JsonObject>();
-
-//int Action[50][2] = {{6,ALKALINITY},{7,ALKALINITY},
-//                    {7,MAGNESIUM},{8,ALKALINITY},
-//                    {9,ALKALINITY},{10,ALKALINITY},
-//                    {11,ALKALINITY},{12,ALKALINITY},{13,ALKALINITY},{14,ALKALINITY},
-//                    {15,ALKALINITY},{18,CALCIUM},{19,CALCIUM},
-//                    {20,STROTIUM},{21,STROTIUM}};
 
 int DOSE5ML;
 double currentPH;
 unsigned long actionMillis = 0;
 unsigned long currentMillis;
 boolean is_dosing = false;
-boolean loaded_template = false;
+boolean loaded_table = false;
 int not_dosed = 1;
 
 void setup(){
@@ -52,10 +38,8 @@ void setup(){
   deserializeJson(pinDoc, pinjson);
   deserializeJson(doseDoc, dosejson);
 
-  JsonObject& dosetable = doseDoc.as<JsonObject>();
   JsonObject& pinconfig = pinDoc.as<JsonObject>();
-
-  //Serial.println(table[7][0].as<String>());
+  JsonObject& pins = pinconfig["pins"];
   
   analogWrite(8, 20);
   display.begin();
@@ -64,20 +48,11 @@ void setup(){
   delay(3000);
 
   DOSE5ML = pinconfig["doseTime"];
-  
-//  PinNames[pinconfig["Alkalinity"].as<int>] = "ALKALINITY";
-//  PinNames[pinconfig["Calcium"].as<int>] = "CALCIUM";
-//  PinNames[pinconfig["Magnesium"].as<int>] = "MAGNESIUM";
-//  PinNames[pinconfig["Strotium"].as<int>] = "STROTIUM";
-  
-  pinMode(pinconfig["Alkalinity"], OUTPUT);
-  digitalWrite(pinconfig["Alkalinity"], LOW);
-  pinMode(pinconfig["Calcium"], OUTPUT);
-  digitalWrite(pinconfig["Calcium"], LOW);
-  pinMode(pinconfig["Magnesium"], OUTPUT);
-  digitalWrite(pinconfig["Magnesium"], LOW);
-  pinMode(pinconfig["Strotium"], OUTPUT);
-  digitalWrite(pinconfig["Strotium"], LOW);
+
+  for (const auto &pin : pins){
+    pinMode(pin.value, OUTPUT);
+    digitalWrite(pin.value, LOW);
+  }
 }
 
 void serialEvent() {
@@ -95,29 +70,29 @@ void serialEvent() {
   if (root["type"] == "pinconfig") {
     serializeJson(root, pinjson);
     deserializeJson(pinDoc, pinjson);
+    loaded_table = false;
   } else if (root["type"] == "dosetable") {
     serializeJson(root, dosejson);
     deserializeJson(doseDoc, dosejson);
+    loaded_table = false;
   } else if (root["type"] == "timesync") {
     //Sync time
     setTime(root["time"]);
     Serial.println(hour());
+    loaded_table = false;
   }
 }
 
 void displayDosingTable() {
-  JsonObject& dosetable = doseDoc.as<JsonObject>();
-  JsonObject& pinconfig = pinDoc.as<JsonObject>();
+  JsonArray& dosetable = doseDoc.as<JsonObject>()["table"];
+  JsonObject& pins = pinDoc.as<JsonObject>()["pins"];
   int loadingbarpos;
   int cursorpos = 0;
   String liquid;
-  if(!loaded_template || is_dosing) {
+  if(!loaded_table || is_dosing) {
     display.fillRect(0, 15, 84, 34, WHITE);
     for(int i=hour()+not_dosed; i<=24; i++){
-      //dosetable["table"][i].size();
-      //Serial.println(dosejson);
-      //Serial.println(dosetable["table"][i].size());
-      for(int j = 0; j < dosetable["table"][i].size(); j++){
+      for(int j = 0; j < dosetable[i].size(); j++){
         cursorpos += 8;
         display.drawRect(0, cursorpos+7, 84, 9, BLACK);
         display.setCursor(4,cursorpos+8);
@@ -131,12 +106,10 @@ void displayDosingTable() {
         }
         display.print(i);
         display.print(":");
-        //Serial.print("dose:");
-        //Serial.println(dosetable["table"][i][j].as<String>());
-        display.print(dosetable["table"][i][j].as<String>());
+        display.print(dosetable[i][j].as<String>());
       }
     }
-  loaded_template = true;
+  loaded_table = true;
   }
 }
 
@@ -161,13 +134,13 @@ void displayPH() {
 }
 
 void checkDosing() {
-  JsonObject& dosetable = doseDoc.as<JsonObject>();
-  JsonObject& pinconfig = pinDoc.as<JsonObject>();
+  JsonArray& dosetable = doseDoc.as<JsonObject>()["table"];
+  JsonObject& pins = pinDoc.as<JsonObject>()["pins"];
   
   if (minute() == 0 && second() == 0 && !is_dosing) {
-    //dosetable["table"][hour()].size()
-    for (int i = 0; i < dosetable["table"][hour()].size(); i++) {
-      digitalWrite(pinconfig[dosetable["table"][hour()].as<String>()], HIGH);
+    //dosetable[hour()].size()
+    for (int i = 0; i < dosetable[hour()].size(); i++) {
+      digitalWrite(pins[dosetable[hour()].as<String>()], HIGH);
       is_dosing = true;
       not_dosed = 0;
     }
@@ -175,10 +148,9 @@ void checkDosing() {
   }
 
   if(currentMillis - actionMillis > DOSE5ML) {
-    digitalWrite(pinconfig["Alkalinity"], LOW);
-    digitalWrite(pinconfig["Calcium"], LOW);
-    digitalWrite(pinconfig["Magnesium"], LOW);
-    digitalWrite(pinconfig["Strotium"], LOW);
+    for (const auto &pin : pins){
+      digitalWrite(pin.value, LOW);
+    }
     is_dosing = false;
   }
 }
